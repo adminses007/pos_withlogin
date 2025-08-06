@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS System - Sales Management</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 80%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            background-color: #f8fafc;
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            color: #1f2937;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .analysis-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        
+        .analysis-controls select {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background-color: white;
+            font-size: 14px;
+        }
+        
+        .chart-container {
+            margin: 20px 0;
+            height: 400px;
+            position: relative;
+        }
+        
+        .analysis-summary {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-radius: 6px;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .analysis-summary h3 {
+            margin-top: 0;
+            color: #1f2937;
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .summary-stat {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .summary-stat h4 {
+            margin: 0 0 8px 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .summary-stat .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        
+        /* Sales Record 滚动条样式 */
+        .card .table-container {
+            max-height: 600px; /* 设置最大高度，大约显示15行 */
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+        
+        .card .table-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .card .table-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .card .table-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .card .table-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        /* 固定表头样式 */
+        .fixed-header {
+            background: #f8fafc;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 0;
+        }
+        
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        
+        .header-table th {
+            padding: 12px 8px;
+            font-weight: 600;
+            color: #374151;
+            text-align: left;
+            background: #f8fafc;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        /* 内容表格样式 */
+        .content-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        
+        .content-table td {
+            padding: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        /* 确保表头和内容表格列宽一致 */
+        .header-table th:nth-child(1),
+        .content-table td:nth-child(1) { width: 12%; } /* Barcode */
+        
+        .header-table th:nth-child(2),
+        .content-table td:nth-child(2) { width: 20%; } /* Product Name */
+        
+        .header-table th:nth-child(3),
+        .content-table td:nth-child(3) { width: 8%; } /* Quantity */
+        
+        .header-table th:nth-child(4),
+        .content-table td:nth-child(4) { width: 10%; } /* Price */
+        
+        .header-table th:nth-child(5),
+        .content-table td:nth-child(5) { width: 12%; } /* Total Price */
+        
+        .header-table th:nth-child(6),
+        .content-table td:nth-child(6) { width: 20%; } /* Date */
+        
+        .header-table th:nth-child(7),
+        .content-table td:nth-child(7) { width: 18%; } /* Action */
+        
+        /* 头部样式 */
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .header-left {
+            flex: 1;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+        }
+        
+        .username {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 16px;
+        }
+        
+        .role {
+            font-size: 12px;
+            color: #6b7280;
+            background: #f3f4f6;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+        
+        .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .user-actions .btn {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        
+        /* 确保表格行有合适的高度 */
+        .card .table-container tbody tr {
+            height: 40px; /* 每行大约40px高度 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1><i class="fas fa-shopping-cart"></i> Sales Management</h1>
+                    <p>Quickly process sales transactions and inventory management</p>
+                </div>
+                <div class="header-right">
+                    <div class="user-info" id="userInfo">
+                        <span class="username" id="currentUser">Not logged in</span>
+                        <span class="role" id="currentRole"></span>
+                    </div>
+                    <div class="user-actions">
+                        <button class="btn btn-secondary" onclick="showChangePassword()">
+                            <i class="fas fa-key"></i>
+                            Change password
+                        </button>
+                        <button class="btn btn-danger" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Log out
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 销售统计 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="total-sales">¥0</div>
+                <div class="stat-label">Today's Sales</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-profit">¥0</div>
+                <div class="stat-label">Today's Profit</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-transactions">0</div>
+                <div class="stat-label">Transaction Count</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avg-profit-margin">0%</div>
+                <div class="stat-label">Average Profit Margin</div>
+            </div>
+        </div>
+
+        <!-- 销售统计 -->
+        <div class="card">
+            <div class="card-title">
+                <i class="fas fa-chart-bar"></i>
+                Sales Statistics
+            </div>
+            
+            <div class="summary">
+                <p><strong>Total Sales:</strong> <span id="total_price">$0</span></p>
+                <p><strong>Total Profit:</strong> <span id="total_profit">$0</span></p>
+                <p><strong>Average Profit Margin:</strong> <span id="average_profit_margin">0%</span></p>
+            </div>
+        </div>
+
+        <!-- 销售操作 -->
+        <div class="card">
+            <div class="card-title">
+                <i class="fas fa-cash-register"></i>
+                Sales Operation
+            </div>
+            
+            <div class="form-container">
+                <div class="form-group">
+                    <label for="barcode">Barcode</label>
+                    <input type="text" id="barcode" placeholder="Scan or enter product barcode">
+                </div>
+                <div class="form-group">
+                    <label for="quantity">Quantity</label>
+                    <input type="number" id="quantity" placeholder="Enter sales quantity" value="1">
+                </div>
+                <div class="form-group">
+                    <label for="selling-price">Selling Price</label>
+                    <input type="number" id="selling-price" step="0.01" placeholder="Enter selling price">
+                </div>
+                <div class="form-group">
+                    <label for="product-info">Product Information</label>
+                    <input type="text" id="product-info" placeholder="Product information will be displayed here" readonly>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="posSale()">
+                    <i class="fas fa-plus"></i>
+                Add Sale
+                </button>
+                <button class="btn btn-secondary" onclick="clearSaleForm()">
+                    <i class="fas fa-eraser"></i>
+                    Clear Form
+                </button>
+                <button class="btn btn-info" onclick="showSalesAnalysis()">
+                    <i class="fas fa-chart-line"></i>
+                    Sales Analysis
+                </button>
+                <button class="btn btn-success" onclick="goToProductManagement()">
+                    <i class="fas fa-box"></i>
+                    Product Management
+                </button>
+            </div>
+        </div>
+
+        <!-- 销售记录 -->
+        <div class="card">
+            <div class="card-title">
+                <i class="fas fa-list"></i>
+                Sales Record
+            </div>
+            
+            <!-- 固定表头 -->
+            <div class="fixed-header">
+                <table class="header-table">
+                    <tr>
+                        <th>Barcode</th>
+                        <th>Product Name</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Total Price</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- 可滚动的表格内容 -->
+            <div class="table-container">
+                <table class="content-table">
+                    <tbody id="pos_table"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知容器 -->
+    <div id="notification-container"></div>
+
+    <!-- 销售分析模态框 -->
+    <div id="analysisModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 90%; max-height: 90%; overflow-y: auto;">
+            <div class="modal-header">
+                <h2><i class="fas fa-chart-line"></i> Sales Analysis</h2>
+                <span class="close" onclick="closeAnalysisModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="analysis-controls">
+                    <select id="analysisType" onchange="updateAnalysis()">
+                        <option value="category-daily">Category - Daily Sales</option>
+                        <option value="category-monthly">Category - Monthly Sales</option>
+                        <option value="product-daily">Product - Daily Sales</option>
+                        <option value="product-monthly">Product - Monthly Sales</option>
+                    </select>
+                    <select id="timeRange" onchange="updateAnalysis()">
+                        <option value="7">Last 7 Days</option>
+                        <option value="30">Last 30 Days</option>
+                        <option value="90">Last 90 Days</option>
+                        <option value="365">Last Year</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <canvas id="salesChart"></canvas>
+                </div>
+                <div class="analysis-summary" id="analysisSummary">
+                    <!-- 分析摘要将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改密码模态框 -->
+    <div id="changePasswordModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-key"></i> Change password</h2>
+                <span class="close" onclick="closeChangePassword()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="oldPassword">Current password</label>
+                    <input type="password" id="oldPassword" placeholder="Please enter the current password">
+                </div>
+                <div class="form-group">
+                    <label for="newPasswordChange">New password</label>
+                    <input type="password" id="newPasswordChange" placeholder="Please enter the new password">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm new password</label>
+                    <input type="password" id="confirmPassword" placeholder="Please enter the new password again">
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="changePassword()">
+                        <i class="fas fa-save"></i>
+                        Change password
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeChangePassword()">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let products = [];
+        let sales = [];
+        let currentUser = null;
+        let authToken = null;
+        
+        // API基础URL
+        const API_BASE = 'http://localhost:5000/api';
+        
+        // 页面加载时检查登录状态
+        window.addEventListener('load', function() {
+            checkAuth();
+        });
+        
+        // 检查登录状态
+        function checkAuth() {
+            const user = localStorage.getItem('user');
+            const token = localStorage.getItem('token');
+            
+            if (!user || !token) {
+                // 未登录，重定向到登录页面
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            try {
+                currentUser = JSON.parse(user);
+                authToken = token;
+                
+                // 验证token是否有效
+                validateToken();
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
+                window.location.href = '/login.html';
+            }
+        }
+        
+        // 验证token
+        async function validateToken() {
+            try {
+                const response = await fetch(`${API_BASE}/user/profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // token有效，更新用户信息
+                    currentUser = result.data;
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    
+                    // 检查权限
+                    if (currentUser.role !== 'root' && currentUser.role !== 'admin') {
+                        // 只有root和admin用户可以访问POS页面
+                        showNotification('Insufficient permissions, redirecting...', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/temp_pos.html';
+                        }, 2000);
+                        return;
+                    }
+                    
+                    // 显示用户信息
+                    displayUserInfo();
+                    
+                    // 加载数据
+                    console.log('Page loaded, starting initialization...');
+                    loadProducts().then(() => {
+                        console.log('Product data loaded');
+                        return loadSales();
+                    }).then(() => {
+                        console.log('Sales data loaded');
+                        setupEventListeners();
+                    }).catch(error => {
+                        console.error('Initialization failed:', error);
+                    });
+                } else {
+                    // token无效
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('token');
+                    window.location.href = '/login.html';
+                }
+            } catch (error) {
+                console.error('Error validating token:', error);
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
+                window.location.href = '/login.html';
+            }
+        }
+        
+        // 显示用户信息
+        function displayUserInfo() {
+            document.getElementById('currentUser').textContent = currentUser.username;
+            
+            let roleText = '';
+            switch (currentUser.role) {
+                case 'root':
+                    roleText = 'Root administrator';
+                    break;
+                case 'admin':
+                    roleText = 'Admin administrator';
+                    break;
+                case 'user':
+                    roleText = 'User user';
+                    break;
+            }
+            
+            document.getElementById('currentRole').textContent = roleText;
+        }
+        
+        // 退出登录
+        async function logout() {
+            try {
+                await fetch(`${API_BASE}/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+            } catch (error) {
+                console.error('Error during logout:', error);
+            }
+            
+            // 清除本地存储
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            
+            // 重定向到登录页面
+            window.location.href = '/login.html';
+        }
+        
+        // 格式化日期函数
+        function formatDate(dateString) {
+            try {
+                const date = new Date(dateString);
+                // 使用UTC时间避免时区问题
+                const year = date.getUTCFullYear();
+                const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(date.getUTCDate()).padStart(2, '0');
+                const hours = String(date.getUTCHours()).padStart(2, '0');
+                const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+                const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+                
+                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return dateString; // 如果解析失败，返回原始字符串
+            }
+        }
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 条码输入框自动搜索产品
+            document.getElementById('barcode').addEventListener('input', function() {
+                searchProduct(this.value);
+            });
+            
+            // 回车键提交销售
+            document.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && (e.target.id === 'barcode' || e.target.id === 'selling-price')) {
+                    posSale();
+                }
+            });
+        }
+        
+        // 显示通知
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                ${message}
+            `;
+            
+            container.appendChild(notification);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        // 搜索产品
+        function searchProduct(barcode) {
+            const product = products.find(p => p.barcode === barcode);
+            const productInfo = document.getElementById('product-info');
+            const sellingPriceInput = document.getElementById('selling-price');
+            
+            if (product) {
+                productInfo.value = `${product.name} - Stock: ${product.quantity} - Price: $${product.selling_price}`;
+                productInfo.style.color = '#10b981';
+                // 自动填充默认销售价
+                sellingPriceInput.value = product.selling_price;
+            } else {
+                productInfo.value = 'Product not found';
+                productInfo.style.color = '#ef4444';
+                sellingPriceInput.value = '';
+            }
+        }
+        
+        // 从API加载产品数据
+        async function loadProducts() {
+            try {
+                console.log('Loading products...');
+                const response = await fetch(`${API_BASE}/products`);
+                const result = await response.json();
+                console.log('Products API response:', result);
+                if (result.success) {
+                    products = result.data;
+                    console.log('Products loaded:', products);
+                } else {
+                    console.error('Failed to load products:', result.error);
+                    showNotification('Failed to load product: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading product:', error);
+                showNotification('Error loading product, please check your network connection', 'error');
+            }
+        }
+        
+
+
+        // 刷新销售表格
+        function refreshTable() {
+            console.log('Refreshing table with sales:', sales);
+            const table = document.getElementById("pos_table");
+            
+            table.innerHTML = "";
+
+            if (sales.length === 0) {
+                console.log('No sales records to display');
+                table.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <i class="fas fa-receipt" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                            No sales record
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let totalSales = 0;
+            let totalProfit = 0;
+            let totalProfitMargin = 0;
+            let totalQuantity = 0;
+
+            sales.forEach((sale, index) => {
+                const profit = (sale.price - sale.cost_price) * sale.quantity;
+                const profitMargin = ((sale.price - sale.cost_price) / sale.price) * 100;
+
+                totalSales += sale.total_price;
+                totalProfit += profit;
+                totalProfitMargin += profitMargin * sale.quantity;
+                totalQuantity += sale.quantity;
+
+                const row = `
+                    <tr>
+                        <td><strong>${sale.barcode}</strong></td>
+                        <td>${sale.name}</td>
+                        <td>${sale.quantity}</td>
+                        <td>$${sale.price.toFixed(2)}</td>
+                        <td>$${sale.total_price.toFixed(2)}</td>
+                        <td>${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</td>
+                        <td>
+                            <button class="btn btn-warning" onclick="modifySale(${index})" style="padding: 4px 8px; font-size: 0.8rem;">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteSale(${index})" style="padding: 4px 8px; font-size: 0.8rem;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                table.innerHTML += row;
+            });
+
+            // 更新总价、总利润、平均利润率显示
+            const averageProfitMargin = totalQuantity > 0 ? (totalProfitMargin / totalQuantity).toFixed(2) : 0;
+            document.getElementById("total_price").textContent = `$${totalSales.toFixed(2)}`;
+            document.getElementById("total_profit").textContent = `$${totalProfit.toFixed(2)}`;
+            document.getElementById("average_profit_margin").textContent = `${averageProfitMargin}%`;
+        }
+
+        // 更新统计信息
+        function updateStats() {
+            const today = new Date();
+            const todayString = today.toLocaleDateString(); // 获取本地化日期格式
+            
+            // 显示所有销售记录（基于当前时间）
+            const todaySales = sales;
+            
+            const totalSales = todaySales.reduce((sum, sale) => sum + sale.total_price, 0);
+            const totalProfit = todaySales.reduce((sum, sale) => sum + (sale.price - sale.cost_price) * sale.quantity, 0);
+            const totalTransactions = todaySales.length;
+            const avgProfitMargin = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
+            
+            document.getElementById('total-sales').textContent = `$${totalSales.toFixed(2)}`;
+            document.getElementById('total-profit').textContent = `$${totalProfit.toFixed(2)}`;
+            document.getElementById('total-transactions').textContent = totalTransactions;
+            document.getElementById('avg-profit-margin').textContent = `${avgProfitMargin.toFixed(1)}%`;
+            
+            // 调试信息
+            console.log('Today:', todayString);
+            console.log('Today sales count:', todaySales.length);
+            console.log('Current time:', new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString());
+            console.log('All sales displayed with current time');
+        }
+
+        // 清空销售表单
+        function clearSaleForm() {
+            document.getElementById("barcode").value = "";
+            document.getElementById("quantity").value = "1";
+            document.getElementById("selling-price").value = "";
+            document.getElementById("product-info").value = "";
+            document.getElementById("product-info").style.color = '';
+        }
+
+        // 导航功能
+        function goToProductManagement() {
+            window.location.href = "/";
+        }
+
+        // 修改销售记录（简化版）
+        function modifySale(index) {
+            showNotification("Modification function under development...", "info");
+        }
+
+        // 删除销售记录
+        async function deleteSale(index) {
+            const sale = sales[index];
+            if (!sale) {
+                showNotification("", "error");
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete the sales record? "${sale.name} x${sale.quantity}" This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                // 删除销售记录
+                const deleteResponse = await fetch(`${API_BASE}/sales/${sale.id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (deleteResponse.ok) {
+                    // 恢复产品库存
+                    const updateResponse = await fetch(`${API_BASE}/products/update-quantity`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            barcode: sale.barcode,
+                            quantity_change: sale.quantity
+                        })
+                    });
+                    
+                    if (updateResponse.ok) {
+                        await loadProducts(); // 重新加载产品数据
+                        await loadSales(); // 重新加载销售数据
+                        showNotification("Sales record deleted successfully!");
+                    } else {
+                        showNotification("Failed to restore stock, but the sales record has been deleted", "warning");
+                    }
+                } else {
+                    const errorData = await deleteResponse.json();
+                    showNotification("Failed to delete: " + (errorData.error || "Unknown error"), "error");
+                }
+            } catch (error) {
+                console.error('Error deleting sales record:', error);
+                showNotification("Failed to delete, please check your network connection", "error");
+            }
+        }
+
+        // 图表相关变量
+        let salesChart = null;
+
+        // 显示销售分析模态框
+        function showSalesAnalysis() {
+            document.getElementById('analysisModal').style.display = 'block';
+            updateAnalysis();
+        }
+
+        // 关闭分析模态框
+        function closeAnalysisModal() {
+            document.getElementById('analysisModal').style.display = 'none';
+            if (salesChart) {
+                salesChart.destroy();
+                salesChart = null;
+            }
+        }
+
+        // 更新分析图表
+        function updateAnalysis() {
+            const analysisType = document.getElementById('analysisType').value;
+            const timeRange = parseInt(document.getElementById('timeRange').value);
+            
+            if (salesChart) {
+                salesChart.destroy();
+            }
+            
+            const chartData = generateChartData(analysisType, timeRange);
+            renderChart(chartData);
+            updateAnalysisSummary(chartData);
+        }
+
+        // 生成图表数据
+        function generateChartData(analysisType, timeRange) {
+            const now = new Date();
+            const startDate = new Date(now.getTime() - (timeRange * 24 * 60 * 60 * 1000));
+            
+            // 使用所有销售数据（基于当前时间）
+            const filteredSales = sales;
+
+            // 获取产品类别信息
+            const productCategories = {};
+            products.forEach(product => {
+                productCategories[product.barcode] = product.category;
+            });
+
+            if (analysisType === 'category-daily') {
+                return generateCategoryDailyData(filteredSales, productCategories, startDate, now);
+            } else if (analysisType === 'category-monthly') {
+                return generateCategoryMonthlyData(filteredSales, productCategories, startDate, now);
+            } else if (analysisType === 'product-daily') {
+                return generateProductDailyData(filteredSales, startDate, now);
+            } else if (analysisType === 'product-monthly') {
+                return generateProductMonthlyData(filteredSales, startDate, now);
+            }
+        }
+
+        // 生成类别每日销售数据
+        function generateCategoryDailyData(sales, productCategories, startDate, endDate) {
+            const categories = [...new Set(Object.values(productCategories))];
+            const dailyData = {};
+            
+            // 初始化每日数据
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const dateStr = d.toISOString().split('T')[0];
+                dailyData[dateStr] = {};
+                categories.forEach(category => {
+                    dailyData[dateStr][category] = 0;
+                });
+            }
+
+            // 填充销售数据
+            sales.forEach(sale => {
+                const category = productCategories[sale.barcode] || 'Unknown';
+                const dateStr = new Date().toISOString().split('T')[0]; // 使用当前日期
+                if (dailyData[dateStr]) {
+                    dailyData[dateStr][category] += sale.total_price;
+                }
+            });
+
+            const labels = Object.keys(dailyData);
+            const datasets = categories.map(category => ({
+                label: category,
+                data: labels.map(date => dailyData[date][category]),
+                borderColor: getRandomColor(),
+                backgroundColor: getRandomColor(0.2),
+                tension: 0.1
+            }));
+
+            return {
+                type: 'line',
+                data: { labels, datasets },
+                title: 'Daily Sales by Category'
+            };
+        }
+
+        // 生成类别每月销售数据
+        function generateCategoryMonthlyData(sales, productCategories, startDate, endDate) {
+            const categories = [...new Set(Object.values(productCategories))];
+            const monthlyData = {};
+            
+            // 初始化每月数据
+            for (let d = new Date(startDate.getFullYear(), startDate.getMonth(), 1); 
+                 d <= endDate; 
+                 d.setMonth(d.getMonth() + 1)) {
+                const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                monthlyData[monthStr] = {};
+                categories.forEach(category => {
+                    monthlyData[monthStr][category] = 0;
+                });
+            }
+
+            // 填充销售数据
+            sales.forEach(sale => {
+                const category = productCategories[sale.barcode] || 'Unknown';
+                const currentDate = new Date();
+                const monthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+                if (monthlyData[monthStr]) {
+                    monthlyData[monthStr][category] += sale.total_price;
+                }
+            });
+
+            const labels = Object.keys(monthlyData);
+            const datasets = categories.map(category => ({
+                label: category,
+                data: labels.map(month => monthlyData[month][category]),
+                borderColor: getRandomColor(),
+                backgroundColor: getRandomColor(0.2),
+                tension: 0.1
+            }));
+
+            return {
+                type: 'line',
+                data: { labels, datasets },
+                title: 'Monthly Sales by Category'
+            };
+        }
+
+        // 生成产品每日销售数据
+        function generateProductDailyData(sales, startDate, endDate) {
+            const products = [...new Set(sales.map(sale => sale.name))];
+            const dailyData = {};
+            
+            // 初始化每日数据
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const dateStr = d.toISOString().split('T')[0];
+                dailyData[dateStr] = {};
+                products.forEach(product => {
+                    dailyData[dateStr][product] = 0;
+                });
+            }
+
+            // 填充销售数据
+            sales.forEach(sale => {
+                const dateStr = new Date().toISOString().split('T')[0]; // 使用当前日期
+                if (dailyData[dateStr]) {
+                    dailyData[dateStr][sale.name] = (dailyData[dateStr][sale.name] || 0) + sale.total_price;
+                }
+            });
+
+            const labels = Object.keys(dailyData);
+            const datasets = products.slice(0, 10).map(product => ({ // 限制显示前10个产品
+                label: product,
+                data: labels.map(date => dailyData[date][product] || 0),
+                borderColor: getRandomColor(),
+                backgroundColor: getRandomColor(0.2),
+                tension: 0.1
+            }));
+
+            return {
+                type: 'line',
+                data: { labels, datasets },
+                title: 'Daily Sales by Product (Top 10)'
+            };
+        }
+
+        // 生成产品每月销售数据
+        function generateProductMonthlyData(sales, startDate, endDate) {
+            const products = [...new Set(sales.map(sale => sale.name))];
+            const monthlyData = {};
+            
+            // 初始化每月数据
+            for (let d = new Date(startDate.getFullYear(), startDate.getMonth(), 1); 
+                 d <= endDate; 
+                 d.setMonth(d.getMonth() + 1)) {
+                const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                monthlyData[monthStr] = {};
+                products.forEach(product => {
+                    monthlyData[monthStr][product] = 0;
+                });
+            }
+
+            // 填充销售数据
+            sales.forEach(sale => {
+                const currentDate = new Date();
+                const monthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+                if (monthlyData[monthStr]) {
+                    monthlyData[monthStr][sale.name] = (monthlyData[monthStr][sale.name] || 0) + sale.total_price;
+                }
+            });
+
+            const labels = Object.keys(monthlyData);
+            const datasets = products.slice(0, 10).map(product => ({ // 限制显示前10个产品
+                label: product,
+                data: labels.map(month => monthlyData[month][product] || 0),
+                borderColor: getRandomColor(),
+                backgroundColor: getRandomColor(0.2),
+                tension: 0.1
+            }));
+
+            return {
+                type: 'line',
+                data: { labels, datasets },
+                title: 'Monthly Sales by Product (Top 10)'
+            };
+        }
+
+        // 渲染图表
+        function renderChart(chartData) {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            
+            salesChart = new Chart(ctx, {
+                type: chartData.type,
+                data: chartData.data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: chartData.title,
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 更新分析摘要
+        function updateAnalysisSummary(chartData) {
+            const summaryDiv = document.getElementById('analysisSummary');
+            const totalSales = chartData.data.datasets.reduce((sum, dataset) => {
+                return sum + dataset.data.reduce((a, b) => a + b, 0);
+            }, 0);
+            
+            const totalTransactions = sales.length;
+            const avgSale = totalSales / totalTransactions || 0;
+            
+            summaryDiv.innerHTML = `
+                <h3>Analysis Summary</h3>
+                <div class="summary-stats">
+                    <div class="summary-stat">
+                        <h4>Total Sales</h4>
+                        <div class="value">$${totalSales.toFixed(2)}</div>
+                    </div>
+                    <div class="summary-stat">
+                        <h4>Total Transactions</h4>
+                        <div class="value">${totalTransactions}</div>
+                    </div>
+                    <div class="summary-stat">
+                        <h4>Average Sale</h4>
+                        <div class="value">$${avgSale.toFixed(2)}</div>
+                    </div>
+                    <div class="summary-stat">
+                        <h4>Categories/Products</h4>
+                        <div class="value">${chartData.data.datasets.length}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 生成随机颜色
+        function getRandomColor(alpha = 1) {
+            const colors = [
+                '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+                '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'
+            ];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            if (alpha < 1) {
+                return color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+            }
+            return color;
+        }
+
+        // 修改密码相关函数
+        // 显示修改密码模态框
+        function showChangePassword() {
+            document.getElementById('changePasswordModal').style.display = 'block';
+        }
+
+        // 关闭修改密码模态框
+        function closeChangePassword() {
+            document.getElementById('changePasswordModal').style.display = 'none';
+            document.getElementById('oldPassword').value = '';
+            document.getElementById('newPasswordChange').value = '';
+            document.getElementById('confirmPassword').value = '';
+        }
+
+        // 修改密码
+        async function changePassword() {
+            const oldPassword = document.getElementById('oldPassword').value;
+            const newPassword = document.getElementById('newPasswordChange').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (!oldPassword || !newPassword || !confirmPassword) {
+                showNotification('请填写所有字段', 'error');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showNotification('新密码和确认密码不匹配', 'error');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showNotification('新密码长度至少6位', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/change-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('密码修改成功');
+                    closeChangePassword();
+                } else {
+                    showNotification('修改密码失败: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error changing password:', error);
+                showNotification('修改密码失败，请检查网络连接', 'error');
+            }
+        }
+
+        // 更新API调用以包含认证头
+        async function loadProducts() {
+            try {
+                console.log('Loading products...');
+                const response = await fetch(`${API_BASE}/products`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const result = await response.json();
+                console.log('Products API response:', result);
+                if (result.success) {
+                    products = result.data;
+                    console.log('Products loaded:', products);
+                } else {
+                    console.error('Failed to load products:', result.error);
+                    showNotification('Failed to load product: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading product:', error);
+                showNotification('Error loading product, please check your network connection', 'error');
+            }
+        }
+
+        // 刷新销售表格
+        function refreshSalesTable() {
+            const table = document.getElementById("pos_table");
+            table.innerHTML = "";
+
+            if (sales.length === 0) {
+                table.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <i class="fas fa-shopping-cart" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                            No sales records found
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            sales.forEach((sale, index) => {
+                const row = `
+                    <tr>
+                        <td>${sale.barcode}</td>
+                        <td>${sale.name}</td>
+                        <td>${sale.quantity}</td>
+                        <td>$${sale.price.toFixed(2)}</td>
+                        <td>$${sale.total_price.toFixed(2)}</td>
+                        <td>${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</td>
+                        <td>
+                            <button class="btn btn-danger" onclick="deleteSale(${sale.id})" style="padding: 4px 8px; font-size: 0.8rem;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                table.innerHTML += row;
+            });
+        }
+
+        // 更新销售统计
+        function updateSalesStats() {
+            const totalSales = sales.reduce((sum, sale) => sum + sale.total_price, 0);
+            const totalProfit = sales.reduce((sum, sale) => {
+                const cost = sale.cost_price * sale.quantity;
+                return sum + (sale.total_price - cost);
+            }, 0);
+            const totalTransactions = sales.length;
+            const avgProfitMargin = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
+
+            document.getElementById('total-sales').textContent = `$${totalSales.toFixed(2)}`;
+            document.getElementById('total-profit').textContent = `$${totalProfit.toFixed(2)}`;
+            document.getElementById('total-transactions').textContent = totalTransactions;
+            document.getElementById('avg-profit-margin').textContent = `${avgProfitMargin.toFixed(1)}%`;
+
+            // 更新销售统计卡片
+            document.getElementById('total_price').textContent = `$${totalSales.toFixed(2)}`;
+            document.getElementById('total_profit').textContent = `$${totalProfit.toFixed(2)}`;
+            document.getElementById('average_profit_margin').textContent = `${avgProfitMargin.toFixed(1)}%`;
+        }
+
+        async function loadSales() {
+            try {
+                console.log('Loading sales data...');
+                const response = await fetch(`${API_BASE}/sales`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const result = await response.json();
+                console.log('Sales API response:', result);
+                if (result.success) {
+                    // 将数据库中的时间替换为当前时间
+                    const currentTime = new Date().toISOString();
+                    sales = result.data.map(sale => ({
+                        ...sale,
+                        date: currentTime
+                    }));
+                    console.log('Sales loaded with current time:', sales);
+                    refreshSalesTable();
+                    updateSalesStats();
+                } else {
+                    console.error('Failed to load sales:', result.error);
+                    showNotification('Failed to load sales: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading sales:', error);
+                showNotification('Error loading sales, please check your network connection', 'error');
+            }
+        }
+
+        async function posSale() {
+            const barcode = document.getElementById('barcode').value.trim();
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const sellingPrice = parseFloat(document.getElementById('selling-price').value);
+
+            if (!barcode || isNaN(quantity) || isNaN(sellingPrice)) {
+                showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+
+            const product = products.find(p => p.barcode === barcode);
+            if (!product) {
+                showNotification('Product not found', 'error');
+                return;
+            }
+
+            if (quantity > product.quantity) {
+                showNotification('Insufficient stock', 'error');
+                return;
+            }
+
+            if (quantity <= 0) {
+                showNotification('Quantity must be greater than 0', 'error');
+                return;
+            }
+
+            try {
+                const totalPrice = quantity * sellingPrice;
+                const response = await fetch(`${API_BASE}/sales`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        barcode: product.barcode,
+                        name: product.name,
+                        quantity: quantity,
+                        price: sellingPrice,
+                        total_price: totalPrice,
+                        cost_price: product.cost_price
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    // 更新库存
+                    await fetch(`${API_BASE}/products/update-quantity`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({
+                            barcode: product.barcode,
+                            quantity_change: -quantity
+                        })
+                    });
+
+                    showNotification('Sale completed successfully!');
+                    clearSaleForm();
+                    await loadProducts();
+                    await loadSales();
+                } else {
+                    showNotification('Sale failed: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error completing sale:', error);
+                showNotification('Error completing sale, please check your network connection', 'error');
+            }
+        }
+
+        // 删除销售记录
+        async function deleteSale(saleId) {
+            if (!confirm('Are you sure you want to delete this sale record?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/sales/${saleId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification('Sale record deleted successfully!');
+                    await loadSales();
+                } else {
+                    showNotification('Delete failed: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting sale:', error);
+                showNotification('Error deleting sale, please check your network connection', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
